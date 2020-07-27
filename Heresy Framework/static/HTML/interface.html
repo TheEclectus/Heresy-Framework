@@ -1,0 +1,353 @@
+<link rel="stylesheet" href="static/HTML/jqx.base.css" type="text/css" />
+<script type="text/javascript" src="static/HTML/jquery-1.12.0.min.js"></script>
+<script type="text/javascript" src="static/HTML/jqxcore.js"></script>
+<script type="text/javascript" src="static/HTML/jqxmenu.js"></script>
+<script type="text/javascript" src="static/HTML/jqxtabs.js"></script>
+<script type="text/javascript" src="static/HTML/jqxwindow.js"></script>
+<script type="text/javascript" src="static/HTML/jqxdropdownlist.js"></script>
+<script type="text/javascript" src="static/HTML/jqxlistbox.js"></script>
+<script type="text/javascript" src="static/HTML/jqxbuttons.js"></script>
+<script type="text/javascript" src="static/HTML/jqxscrollbar.js"></script>
+<script type="text/javascript" src="static/HTML/jqxinput.js"></script>
+<script type="text/javascript" src="static/HTML/jqxgrid.js"></script>
+<script type="text/javascript" src="static/HTML/jqxgrid.edit.js"></script>
+<script type="text/javascript" src="static/HTML/jqxgrid.filter.js"></script>
+
+<script lang="javascript" src="static/HTML/xlsx.core.min.js"></script>
+
+<script type="text/javascript">
+	var Players = [
+		"Neb!",
+		"That cuck, Ian",
+		"Smokin' reefer w/ cheef keefer"
+	];
+	
+	var Database = [];
+	var PreDatabase = [];
+	
+	function isRightClick(event) {
+		var rightclick;
+		if (!event) var event = window.event;
+		if (event.which) rightclick = (event.which == 3);
+		else if (event.button) rightclick = (event.button == 2);
+		return rightclick;
+    }
+	
+	function showMenu(menu, event) {
+		var rightclick = isRightClick(event);
+		if(rightclick) {
+			var scrollTop = $(window).scrollTop();
+			var scrollLeft = $(window).scrollLeft();
+			menu.jqxMenu('open', parseInt(event.clientX) + 5 + scrollLeft, parseInt(event.clientY) + 5 + scrollTop);
+            return false;
+		}
+	}
+	
+	function resetFormElement(e) {
+		console.log(e);
+		e.wrap('<form>').closest('form').get(0).reset();
+		e.unwrap();
+
+		// Prevent form submission
+		e.stopPropagation();
+		e.preventDefault();
+	}
+	
+	function handleEntryUpload(event) {
+		console.log("Made it.");
+		var files = event.target.files;
+		var i,f;
+		for(i = 0, f = files[i]; i != files.length; ++i) {
+			var reader = new FileReader();
+			var name = f.name;
+			reader.onload = function(e) {
+				var data = e.target.result;
+				var workbook = XLSX.read(data, {type: 'binary'});
+				console.log(workbook);
+				
+				Database = [];
+				var sheetNameList = workbook.SheetNames;
+				var entryCount = 0;
+				sheetNameList.forEach(function(sheet) {
+					var worksheet = workbook.Sheets[sheet];
+					var pdbase = XLSX.utils.sheet_to_row_object_array(worksheet);
+					if(pdbase.length > 0) {
+						Database.push(pdbase);
+						entryCount += pdbase.length;
+					}
+				});
+				$('#p_OFFDEntryCount').text('Entries to import: ' + entryCount);
+				// Do workbook shit here
+			};
+			reader.readAsBinaryString(f);
+		}
+	}
+	
+	var ContextMenu_ChatTabs;
+	
+	$(document).ready(function() {
+		ContextMenu_ChatTabs = $('#contextMenu_ChatTabs').jqxMenu({ width: '160px', height: '120px', autoOpenPopup: false, mode: 'popup', animationShowDuration: 0, animationHideDuration: 0});
+		
+		$('#window_GMSendMsg').jqxWindow({width: '322px', height: '160px', autoOpen: false});
+		$('#playerDropDownList').jqxDropDownList({source: Players, width: '170px', height: '25px', selectedIndex: 0, animationType: 'none'});
+		
+		$('#window_OpenFileForDbase').jqxWindow({width: '322px', height: '160px', autoOpen: false});
+		$('#window_OpenFileForDbase').on('close', function(event) {
+			//$('#btn_ConfirmDatabaseReload').jqxButton('disabled', false);
+			//$('input_OpenFileForDbase').value('');
+			console.log($('input_OpenFileForDbase').wrap('<form>').closest('form'));
+			//$('input_OpenFileForDbase').wrap('<form>').closest('form');//[0].reset();
+			$('input_OpenFileForDbase').unwrap();
+		});
+		$('#btn_ConfirmDatabaseReload').jqxButton({disabled: true, width: 'auto', height: '25px'});
+		
+		
+		$('#mainTabs').jqxTabs({initTabContent: function(tab) {
+			var index = tab + 1;
+			
+			switch(index)
+			{
+			case 3:
+				$('#btn_AddDbaseEntryFromFile').jqxButton({height: 'auto', disabled: true});
+				$('#btn_AddDbaseEntryFromFile').on('click', function() {
+					$('#window_OpenFileForDbase').jqxWindow('open');
+				});
+				
+				$('#txtbx_SearchDbase').jqxInput({minLength: 1, height: 24});
+					
+				$('#btn_EditDatabase').jqxToggleButton({toggled: false});
+				$('#btn_EditDatabase').on('click', function() {
+					var toggled = $('#btn_EditDatabase').jqxToggleButton('toggled');
+					var oldWidth = $('#btn_EditDatabase').width();
+					if(toggled) {
+						$('#btn_EditDatabase')[0].value = "Edit Mode: Enabled";
+						$('#btn_EditDatabase').width(oldWidth);
+						$('#btn_AddDbaseEntryFromFile').jqxButton('disabled', false);
+					}
+					else {
+						$('#btn_EditDatabase')[0].value = "Edit Mode: Disabled";
+						$('#btn_AddDbaseEntryFromFile').jqxButton('disabled', true);
+					}
+				});
+					
+				$('#dbaseTabs').jqxTabs();
+				break;
+			}
+		}});
+		
+		$('#refTabs').jqxTabs({showCloseButtons:true});
+		$($('#refTabs').children()[0]).bind('contextmenu', function (e) {
+			return false;
+        });
+		
+		$('#chatTabs').jqxTabs({showCloseButtons:true});
+		$($('#chatTabs').children()[0]).bind('contextmenu', function (e) {
+			return false;
+        });
+		$($('#chatTabs').children()[0]).bind('mousedown', function (event) {
+			showMenu(ContextMenu_ChatTabs, event);
+        });
+	});
+</script>
+
+<style>
+@font-face {
+	font-family: "DHFont";
+	src: url("/static/HTML/Caslon Antique.ttf");
+}
+
+@font-face {
+	font-family: "DHFont";
+	src: url("/static/HTML/Caslon Antique Italic.ttf");
+	font-style: italic;
+}
+
+div.jqx-tabs-header {
+	font-family: DHFont;
+	font-size: 12pt;
+}
+
+#btn_EditDatabase.jqx-fill-state-pressed {
+	background: #DCDC64;
+}
+
+#mainTabs {
+	height: 100%;
+	width: 100%;
+}
+#refTabs {
+	height: 49.5%;
+	width: 100%;
+}
+#chatTabs {
+	margin-top: 0.8%;
+	height: 49.5%;
+	width: 100%;
+}
+div.tab {
+	padding: 10px;
+}
+div.containerTabs {
+	width: 49.5%;
+	height: 98.8%;
+}
+div.padded {
+	padding: 10px;
+}
+</style>
+
+<div id="contextMenu_ChatTabs">
+	<ul>
+		<li onClick="$('#window_GMSendMsg').jqxWindow('open');">Send message as...</li>
+	</ul>
+</div>
+
+<div id="window_GMSendMsg">
+	<div>Send Message As</div>
+	<div>
+		<input type="text" placeholder="Name to send as"></input>
+		<div>
+			<p style="float:left;">Select recipient</p>
+			<div id="playerDropDownList" style="float:left;"></div>
+		</div>
+	</div>
+</div>
+
+<div id="window_OpenFileForDbase">
+	<div>Import Entries From File</div>
+	<div>
+		<input type="file" name="input_OpenFileForDbase" id="input_OFFD" accept=".xlsx,.xls"></input>
+		<p id="p_OFFDEntryCount">Entries to import: 0</p>
+		<input type="button" id="btn_ConfirmDatabaseReload" value="Confirm" style="display:inline; margin-right: 15px"/>
+	</div>
+</div>
+
+<body>
+	<div class="containerTabs" style="float:left; font-family: DHFont">
+		<div id="mainTabs">
+			<ul>
+				<li>PCs</li>
+				<li>NPCs</li>
+				<li>Database</li>
+				<li>Settings</li>
+			</ul>
+			<div class="tab">
+				List of PCs.
+			</div>
+			<div class="tab">
+				List of NPCs.
+			</div>
+			<div class="tab">
+				<!-- Database of all items, NPCs, powers, etc. -->
+				<div style="display:box; vertical-align:middle; margin-bottom: 15px;">
+					<input type="button" id="btn_EditDatabase" value="Edit Mode: Disabled" style="display:inline; margin-right: 15px;"/>
+					<input type="button" id="btn_AddDbaseEntryFromFile" value="Import Entries From File" style="display:inline; margin-right: 15px; disabled: true"/>
+					<input type="text" id="txtbx_SearchDbase" placeholder="Search database..." style="width:290px"/>
+				</div>
+				
+				<div style="display:box; vertical-align:middle">
+					<div id="dbaseTabs" style="height:85%">
+						<ul>
+							<li>All</li>
+							<li>Skills</li>
+							<li>Talents</li>
+							<li>Weapons</li>
+							<li>Weapon Special Qualities</li>
+							<li>Weapon Upgrades</li>
+							<li>Ammo</li>
+							<li>Armor</li>
+							<li>Clothing</li>
+							<li>Tools</li>
+							<li>Consumables</li>
+							<li>Services</li>
+							<li>Medicae</li>
+							<li>Cybernetics</li>
+							<li>Psychic Powers</li>
+							<li>Other</li>
+						</ul>
+						<div class="tab">
+							All entries.
+						</div>
+						<div class="tab">
+							Skills
+						</div>
+						<div class="tab">
+							Talents
+						</div>
+						<div class="tab">
+							Weapons
+						</div>
+						<div class="tab">
+							Weapon Special Qualities
+						</div>
+						<div class="tab">
+							Weapon upgrades
+						</div>
+						<div class="tab">
+							Ammo
+						</div>
+						<div class="tab">
+							Armor
+						</div>
+						<div class="tab">
+							Clothing and accessory items
+						</div>
+						<div class="tab">
+							Tools
+						</div>
+						<div class="tab">
+							Consumables
+						</div>
+						<div class="tab">
+							Services
+						</div>
+						<div class="tab">
+							Medicae
+						</div>
+						<div class="tab">
+							Cybernetics
+						</div>
+						<div class="tab">
+							Psychic Powers
+						</div>
+						<div class="tab">
+							Other items
+						</div>
+						
+					</div>
+				</div>
+			</div>
+			<div class="tab">
+				List of setting the GM can change.
+			</div>
+		</div>
+	</div>
+	<div class="containerTabs" style="float:right;">
+		<div id="refTabs">
+			<ul>
+				<li>Ref 1</li>
+			</ul>
+			<div class="tab">
+				Reference!
+			</div>
+		</div>
+		<div id="chatTabs">
+			<ul>
+				<li hasclosebutton='false'>Main Chat</li>
+				<li>side keks</li>
+			</ul>
+			<div class="tab">
+				The main chat window. Can't be closed :P
+			</div>
+			<div class="tab">
+				Side chat. CAN be closed.
+			</div>
+		</div>
+	</div>
+</body>
+
+<script type="text/javascript">
+	var uload = document.getElementById("input_OFFD");
+	if (uload.addEventListener) uload.addEventListener('change', handleEntryUpload, false);
+	else console.log("no good, jimbo");
+</script>
